@@ -1,6 +1,15 @@
 <template>
-  <div>asdsad</div>
+  <div>
+    <video controls autoPlay width="600" height="500">
+      <source src="http://localhost:6000/api/v1/video-stream" type="video/mp4" />
+      Your browser does not support HTML5 video tags.
+    </video>
+  </div>
 </template>
+
+<script>
+export default {};
+</script>
 
 <style>
 * {

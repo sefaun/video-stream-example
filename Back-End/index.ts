@@ -1,14 +1,11 @@
 import express from 'express'
+import fs from 'fs'
 import cors from 'cors'
 import morgan from 'morgan'
-import { RedisClient } from './connections/redis'
 
 
 const start = async () => {
   try {
-
-    const redis_client = new RedisClient()
-    await redis_client.RedisConnect('redis://localhost:6379', 'my_password')
 
     const app = express()
 
@@ -17,14 +14,30 @@ const start = async () => {
     app.use(express.urlencoded({ extended: true }))
     app.use(express.json())
 
-    app.get('/api/v1/:stream_no', async (req, res, _next) => {
+    app.get('/api/v1/video-stream', async (req, res, _next) => {
 
-      const stream = await redis_client.client.get(`stream::${req.params.stream_no}`)
+      const resolved_path = './video.mp4'
+      const fileSize = fs.statSync(resolved_path).size
+      const range = req.headers.range
 
-      // res.setHeader('Content-Transfer-Encoding', 'binary')
+      const parts = range.replace(/bytes=/, '').split('-')
+
+      const start = Number(parts[0])
+      const end = parts[1] ? Number(parts[1]) : 500000
+
+      if (start >= fileSize) {
+        return res.status(416).send('Requested range not satisfiable\n' + start + ' >= ' + fileSize)
+      }
+
+      const chunksize = (end - start) + 1
+      const file = fs.createReadStream(resolved_path, { start, end });
+
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`)
       res.setHeader('Accept-Ranges', 'bytes')
+      res.setHeader('Content-Length', chunksize)
       res.setHeader('Content-Type', 'video/mp4')
-      return res.status(200).send(stream)
+
+      return file.pipe(res)
 
     })
 
